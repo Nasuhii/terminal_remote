@@ -1,0 +1,14 @@
+App(
+    appid="terminal_remote",
+    name="Terminal Remote",
+    apptype=FlipperAppType.EXTERNAL,
+    entry_point="terminal_remote_app",
+    stack_size=2 * 1024,
+    fap_category="Bluetooth",
+    fap_libs=["ble_profile"],
+    fap_version="1.1",
+    fap_icon="terminal_remote.png",
+    fap_description="Bluetooth LE Multi-Tab Terminal Controller & Hub",
+    fap_author="Nasuhi",
+    fap_weburl="https://github.com/Nasuhii/terminal_remote",
+)
