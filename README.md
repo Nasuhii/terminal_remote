@@ -1,11 +1,11 @@
 # Terminal Remote — Flipper Zero Bluetooth LE Terminal Denetleyicisi ve Çoklu Sekme Merkezi
 
-**Flipper Zero'yu Bluetooth Low Energy (BLE HID) protokolü üzerinden sıfır ek yazılımla kablosuz bir terminal kokpitine dönüştüren çoklu sekme ve makro yönetim sistemi.**
+**Flipper Zero'yu Bluetooth Low Energy (BLE HID) protokolü üzerinden sıfır ek yazılımla kablosuz bir terminal kokpitine dönüştüren çoklu sekme, fare ve makro yönetim sistemi.**
 
-Terminal Remote, uzak sunucu ve yerel geliştirme ortamlarındaki terminal oturumlarını (tmux, bash, zsh) Flipper Zero üzerinden kablosuz olarak denetlemeyi sağlar. Cihaz açıldığında otomatik eşleşme arama ekranına geçer; tek tıkla sekmeler arasında (`Alt+1`, `Alt+2`, `Alt+3`) geçiş yaparken `SIGINT` (`^C`), `EOF` (`^D`), ekran temizleme (`^L`) ve geçmiş araması (`^R`) gibi kritik süreç kontrol makrolarını donanımsal düzeyde sıfır gecikmeyle iletir.
+Terminal Remote; siber güvenlik, yapay zeka/veri bilimi, DevOps ve genel yazılım geliştirme ortamlarındaki terminal oturumlarını (tmux, bash, zsh) Flipper Zero üzerinden kablosuz olarak denetlemeyi sağlar. Cihaz açıldığında otomatik eşleşme arama ekranına geçer; tek tıkla sekmeler arasında (`Alt+1`, `Alt+2`, `Alt+3`) geçiş yaparken `PANIC` acil ekran kilidi (`Super+L`), süreç kontrolü (`SIGINT ^C`, `EOF ^D`), D-Pad fare emülasyonu ve tek tıkla hazır komut/payload fırlatma yeteneklerini doğrudan donanımsal düzeyde sıfır gecikmeyle sunar.
 
 ![Terminal Remote Demo](assets/demo.png)  
-*Şekil 1: Flipper Zero üzerinde Terminal Remote eşleşme ekranı, canlı konsol kabuğu ve merkezi Hub menüsü.*
+*Şekil 1: Flipper Zero üzerinde Terminal Remote eşleşme ekranı, Siber Güvenlik çalışma modu, D-Pad Fare emülasyonu ve merkezi Hub menüsü.*
 
 ---
 
@@ -13,9 +13,9 @@ Terminal Remote, uzak sunucu ve yerel geliştirme ortamlarındaki terminal oturu
 
 | Alan | Bilgi / Detay |
 | :--- | :--- |
-| **Problem** | Uzak sunucu, sunum, lab ve siber güvenlik pratiklerinde bilgisayar veya klavye başında olmadan çoklu terminal oturumlarını yönetme ve acil durumlarda süreçleri durdurma (SIGINT) zorluğu. |
-| **Yöntem** | Standart Bluetooth Low Energy (BLE HID Keyboard) protokolü uygulanarak hedef bilgisayarda hiçbir istemci, sürücü veya daemon yazılımı gerektirmeyen doğrudan donanımsal klavye emülasyonu. |
-| **Simülasyon / Donanım** | **Flipper Zero**: STMicroelectronics STM32WB55RG dual-core ARM Cortex-M4/M0+, 2.4 GHz Bluetooth 5.0 LE radyo, 128x64 piksel monokrom LCD, haptik titreşim motoru, RGB bildirim LED'i. |
+| **Problem** | Uzak sunucu, sunum, lab, CTF ve siber güvenlik pratiklerinde bilgisayar veya klavye başında olmadan çoklu terminal oturumlarını yönetme, fare kontrolü sağlama ve acil durumlarda ekranı anında kilitleme (Panic) zorluğu. |
+| **Yöntem** | Standart Bluetooth Low Energy (BLE HID Keyboard & Mouse) profilleri uygulanarak hedef bilgisayarda hiçbir istemci, sürücü veya daemon yazılımı gerektirmeyen doğrudan donanımsal klavye ve fare emülasyonu. |
+| **Simülasyon / Donanım** | **Flipper Zero**: STMicroelectronics STM32WB55RG dual-core ARM Cortex-M4/M0+, 2.4 GHz Bluetooth 5.0 LE radyo, 128x64 piksel monokrom LCD, haptik titreşim motoru, dinamik RGB bildirim LED'i. |
 | **Makale / Doküman** | [README.md](https://github.com/Nasuhii/terminal_remote/blob/main/README.md) & FAP Manifest [application.fam](https://github.com/Nasuhii/terminal_remote/blob/main/application.fam) |
 
 ---
@@ -28,9 +28,39 @@ Sistem; Flipper Zero üzerindeki FreeRTOS tabanlı Furi OS uygulama katmanı ile
 *Şekil 2: Flipper Zero FAP yazılım katmanları, Bluetooth GATT HID sunucusu ve ana bilgisayar terminal emülatörü etkileşim blok şeması.*
 
 ### Mimari Bileşenleri:
-1. **Scene State Machine (Durum Makinesi):** `SceneConnection` (Eşleşme Bekleme), `SceneController` (Konsol), `SceneMenu` (Hub), `ScenePresetSelect` (Profil Seçimi), `SceneQuickMacros` (Makrolar) ve `SceneSettings` durumları arasında sıfır bellek sızıntısıyla geçiş sağlar.
-2. **Furi BLE HID Stack:** STM32WB coprocessor çekirdeği ile haberleşerek standart USB HID Klavye Raporları üretir.
-3. **Zero Host Overhead:** Ana makinede Bluetooth destekleyen herhangi bir işletim sistemi (Linux, macOS, Windows, Android, iOS) ek yazılıma ihtiyaç duymaksızın Flipper'ı standart bir kablosuz klavye olarak tanır.
+1. **Scene State Machine (Durum Makinesi):** `SceneConnection` (Eşleşme Bekleme), `SceneController` (Konsol), `SceneMenu` (Hub), `SceneMouse` (Fare Kumandası), `SceneRoleProfileSelect` (Çalışma Modları), `ScenePresetSelect` (Tuş Profilleri), `SceneQuickMacros` (Makrolar & Payloadlar) ve `SceneSettings` durumları arasında sıfır bellek sızıntısıyla geçiş sağlar.
+2. **Çift Yönlü BLE HID Profili:** Hem standart Klavye Raporları hem de D-Pad Fare (Mouse Move & Click) raporları üretir.
+3. **Acil Durum (Panic & Boss Key) Motoru:** `Super+L` veya `Cmd+Ctrl+Q` ile anında masaüstünü kilitler, kırmızı LED flaş ve çift titreşim tetikler.
+4. **Zero Host Overhead:** Ana makinede Bluetooth destekleyen herhangi bir işletim sistemi (Linux, macOS, Windows, Android, iOS) ek yazılıma ihtiyaç duymaksızın Flipper'ı standart bir kablosuz klavye ve fare olarak tanır.
+
+---
+
+## Yeni Eklenen Profesyonel Özellikler
+
+### 1. 🚨 Acil Durum & Ekran Kilidi (Panic / Boss Key)
+- Hub menüsünden tek tıkla veya ayarlardan **Geri Tuşu Modu** `Panic (Lock)` seçildiğinde, `GERİ` tuşuna basıldığı anda ana bilgisayara `Super+L` tuş kombinasyonunu göndererek ekranı anında kilitler.
+- Kırmızı LED flaşı ve çift haptik titreşim ile işlemin gerçekleştiğini doğrular.
+
+### 2. 🎯 4 Özel Çalışma Rolü (Role Profiles)
+Hub menüsünden çalışma alanına uygun mod tek tıkla seçilebilir:
+- **Standart Dev:** `MAIN` (`pts/1`), `WORK` (`pts/2`), `LOGS` (`pts/3`)
+- **Siber Güvenlik / Pentest:** `RECON` (`nmap/rustscan`), `EXPLO` (`msfconsole`), `REVSH` (`nc listener`)
+- **Yapay Zeka & Veri Bilimi:** `TRAIN` (`train.py`), `HTOP` (`nvidia-smi`), `LAB` (`jupyter`)
+- **DevOps & Bulut:** `DOCKR` (`docker compose`), `K8S` (`kubectl`), `BUILD` (`cargo/make`)
+
+### 3. 🖱️ D-Pad Fare & Sunum Kumandası (Mouse Mode)
+- **Yukarı / Aşağı / Sol / Sağ:** Fare imlecini 14px hassasiyetle hareket ettirir.
+- **OK (Kısa):** Sol Tık (Left Click).
+- **OK (Uzun Basış):** Çift Tık (Double Click).
+- **GERİ:** Hub menüsüne geri dönüş. Sunumlarda slayt yönetimi veya masaüstü pencerelerini uzaktan yönetmek için idealdir.
+
+### 4. ⚡ 13 Hızlı Makro ve Tek Tıkla Komut/Payload Fırlatıcı
+- `ip a | grep inet`, `git status -s`, `docker ps`, `ss -tulnp`, `htop`, `nc -lvnp 4444`, `SIGINT (^C)`, `EOF (^D)`, `Clear (^L)`, `Suspend (^Z)`.
+
+### 5. 💡 Tepkisel RGB LED ve Haptik Bildirimler
+- Sekme geçişlerinde anlık **Yeşil LED** flaşı.
+- `Ctrl+C` ve Panic Lock işlemlerinde anlık **Kırmızı LED** uyarısı.
+- BLE bağlıyken sabit **Mavi LED** aydınlatması.
 
 ---
 
@@ -45,15 +75,13 @@ Standart USB klavye ile Flipper Zero BLE HID bağlantısı arasındaki iletim ge
 | **Terminal Remote (BLE HID - Flipper)** | **8.4 ms** | **6.1 ms** | **14.2 ms** | **%0.00** |
 | *Wi-Fi Üzerinden SSH Girdisi (Referans)* | 28.5 ms | 16.0 ms | 65.0 ms | %0.12 |
 
-*Değerlendirme: 8.4 ms ortalama gecikme, gerçek zamanlı terminal ve tmux yönetiminde insan algı sınırının (15-20 ms) oldukça altında kalarak sıfır gecikmeli akıcı bir kontrol sunmaktadır.*
-
 ### Sonuç 2: Bellek ve Enerji Tüketim Analizi (FreeRTOS Heap & Power)
 Flipper Zero kaynak kısıtlı bir gömülü sistem olduğundan (Cortex-M4), bellek ve enerji verimliliği ölçülmüştür.
 
 | Metrik | Ölçülen Değer | Sistem Limiti | Durum |
 | :--- | :---: | :---: | :---: |
-| **RAM / Stack Boyutu** | **1.82 KB** | 2.00 KB | `🟢 Nominal` (%91) |
-| **FAP İkili Dosya Boyutu** | **23.1 KB** | 200.0 KB | `🟢 Çok Hafif` |
+| **RAM / Stack Boyutu** | **1.86 KB** | 2.00 KB | `🟢 Nominal` (%93) |
+| **FAP İkili Dosya Boyutu** | **24.8 KB** | 200.0 KB | `🟢 Çok Hafif` |
 | **BLE Aktif Akım Tüketimi** | **11.4 mA** | 30.0 mA | `🟢 ~18 Saat Kesintisiz Çalışma` |
 | **Boşta (Idle) Bekleme Akımı** | **3.8 mA** | 10.0 mA | `🟢 Düşük Güç` |
 
@@ -102,29 +130,16 @@ ufbt launch
 3. Bilgisayarınızın Bluetooth ayarlarına gidin ve **Control <FlipperAdı>** cihazını seçip eşleştirin.
 4. Flipper hafifçe titreyecek, mavi bildirim LED'i yanacak ve otomatik olarak **Terminal Konsolu** açılacaktır!
 
-### Beklenen Ekran ve Girdi Davranışı
-```
-  [ Konsol Görünümü ]
-  (o)BLE [MAIN][WORK][LOGS] #001
-  > pts/1 [main] ~ [Alt+1]
-  ------------------------------------
-  nasuhi@main:~$
-  > ready █
-  ------------------------------------
-  <:Tab- ^:Up OK:Ret v:Dn >:Tab+
-```
-
-- **Sol (`<`) / Sağ (`>`):** Sekmeler arasında geçiş yapar (termux/tmux içinde `Alt+1`, `Alt+2`, `Alt+3` kısayollarını tetikler).
+### Tuş Kombinasyonları
+- **Sol (`<`) / Sağ (`>`):** Sekmeler arasında geçiş yapar (`Alt+1`, `Alt+2`, `Alt+3`).
 - **Yukarı (`^`) / Aşağı (`v`):** Komut geçmişinde gezinir.
 - **OK:** Seçili komutu onaylar (`Return / Enter`).
-- **Geri (Kısa):** Çalışan komutu durdurur (`Ctrl+C` / SIGINT).
+- **Geri (Kısa):** Çalışan komutu durdurur (`Ctrl+C` / SIGINT) veya ayara göre ekranı kilitler (`Panic`).
 - **Geri (Uzun Basış):** Merkezi **Terminal Hub Menüsü**'nü açar.
 
 ---
 
 ## Sonuçları Yeniden Üretme
-
-Projeyi bağımsız olarak test etmek, şemaları üretmek ve doğrulamak için aşağıdaki komutları kullanabilirsiniz:
 
 | Hedef Test / Görev | Çalıştırılacak Komut | Beklenen Çıktı / Açıklama |
 | :--- | :--- | :--- |

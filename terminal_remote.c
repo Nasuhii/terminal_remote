@@ -1,5 +1,6 @@
 #include <furi.h>
 #include <furi_hal.h>
+#include <furi_hal_usb_hid.h>
 #include <gui/gui.h>
 #include <gui/elements.h>
 #include <input/input.h>
@@ -41,9 +42,19 @@ typedef struct {
 } TabConfig;
 
 typedef enum {
+    RoleProfileStandard = 0,
+    RoleProfilePentest,
+    RoleProfileAiData,
+    RoleProfileDevops,
+    RoleProfileCount,
+} RoleProfile;
+
+typedef enum {
     SceneConnection = 0,
     SceneController,
     SceneMenu,
+    SceneMouse,
+    SceneRoleProfileSelect,
     ScenePresetSelect,
     SceneQuickMacros,
     SceneSettings,
@@ -55,6 +66,7 @@ typedef enum {
     BackActionForceCtrlC,     // Always sends Ctrl+C
     BackActionEscape,         // Always sends ESC
     BackActionCtrlD,          // Always sends Ctrl+D
+    BackActionPanicLock,      // Panic Key: Lock screen immediately
     BackActionMenuOnly,       // Directly opens menu
     BackActionCount,
 } BackAction;
@@ -103,6 +115,7 @@ typedef struct __attribute__((packed)) {
     uint8_t key_delay_ms;
     uint8_t tab1_name_idx;
     uint8_t tab2_name_idx;
+    uint8_t role_profile;
 } TerminalRemoteSettings;
 
 typedef struct {
@@ -122,7 +135,9 @@ typedef struct {
     uint8_t preset_count;
     uint8_t active_preset_index;
 
-    // Tabs
+    // Tabs & Roles
+    RoleProfile role_profile;
+    uint8_t role_select_index;
     uint8_t active_tab; // 0..NUM_TABS - 1
     uint8_t tab1_name_idx;
     uint8_t tab2_name_idx;
@@ -166,29 +181,109 @@ typedef struct {
 static const char* const TAB1_NAMES[] = {"1:MAIN", "1:BASH", "1:DEV", "1:SSH"};
 static const char* const TAB2_NAMES[] = {"2:WORK", "2:LOGS", "2:HTOP", "2:AUX"};
 
-static const TabConfig TERMINAL_TABS[NUM_TABS] = {
-    {
-        .name = "MAIN",
-        .shell_title = "> pts/1 [main] ~",
-        .prompt = "nasuhi@main:~$",
-        .shortcut = "Alt+1",
-        .keycode = HID_KEYBOARD_1,
+static const TabConfig ROLE_TABS[RoleProfileCount][NUM_TABS] = {
+    [RoleProfileStandard] = {
+        {
+            .name = "MAIN",
+            .shell_title = "> pts/1 [main] ~",
+            .prompt = "nasuhi@main:~$",
+            .shortcut = "Alt+1",
+            .keycode = HID_KEYBOARD_1,
+        },
+        {
+            .name = "WORK",
+            .shell_title = "> pts/2 [work] ~",
+            .prompt = "nasuhi@work:~$",
+            .shortcut = "Alt+2",
+            .keycode = HID_KEYBOARD_2,
+        },
+        {
+            .name = "LOGS",
+            .shell_title = "> pts/3 [logs] ~",
+            .prompt = "nasuhi@logs:~$",
+            .shortcut = "Alt+3",
+            .keycode = HID_KEYBOARD_3,
+        },
     },
-    {
-        .name = "WORK",
-        .shell_title = "> pts/2 [work] ~",
-        .prompt = "nasuhi@work:~$",
-        .shortcut = "Alt+2",
-        .keycode = HID_KEYBOARD_2,
+    [RoleProfilePentest] = {
+        {
+            .name = "RECON",
+            .shell_title = "> nmap / rustscan",
+            .prompt = "root@kali:~/recon#",
+            .shortcut = "Alt+1",
+            .keycode = HID_KEYBOARD_1,
+        },
+        {
+            .name = "EXPLO",
+            .shell_title = "> msfconsole v6",
+            .prompt = "msf6 (exploit) >",
+            .shortcut = "Alt+2",
+            .keycode = HID_KEYBOARD_2,
+        },
+        {
+            .name = "REVSH",
+            .shell_title = "> nc listener :4444",
+            .prompt = "connect back ~$",
+            .shortcut = "Alt+3",
+            .keycode = HID_KEYBOARD_3,
+        },
     },
-    {
-        .name = "LOGS",
-        .shell_title = "> pts/3 [logs] ~",
-        .prompt = "nasuhi@logs:~$",
-        .shortcut = "Alt+3",
-        .keycode = HID_KEYBOARD_3,
+    [RoleProfileAiData] = {
+        {
+            .name = "TRAIN",
+            .shell_title = "> python train.py",
+            .prompt = "(pytorch) epoch:~$",
+            .shortcut = "Alt+1",
+            .keycode = HID_KEYBOARD_1,
+        },
+        {
+            .name = "HTOP",
+            .shell_title = "> watch nvidia-smi",
+            .prompt = "gpu:0 [78C 96%] ~$",
+            .shortcut = "Alt+2",
+            .keycode = HID_KEYBOARD_2,
+        },
+        {
+            .name = "LAB",
+            .shell_title = "> jupyter notebook",
+            .prompt = "jupyter@local:~$",
+            .shortcut = "Alt+3",
+            .keycode = HID_KEYBOARD_3,
+        },
+    },
+    [RoleProfileDevops] = {
+        {
+            .name = "DOCKR",
+            .shell_title = "> docker compose",
+            .prompt = "docker@host:~$",
+            .shortcut = "Alt+1",
+            .keycode = HID_KEYBOARD_1,
+        },
+        {
+            .name = "K8S",
+            .shell_title = "> kubectl get pods",
+            .prompt = "k8s-cluster:~$",
+            .shortcut = "Alt+2",
+            .keycode = HID_KEYBOARD_2,
+        },
+        {
+            .name = "BUILD",
+            .shell_title = "> cargo / make",
+            .prompt = "ci-runner@prod:~$",
+            .shortcut = "Alt+3",
+            .keycode = HID_KEYBOARD_3,
+        },
     },
 };
+
+static const char* const ROLE_NAMES[RoleProfileCount] = {
+    "Standart Dev",
+    "Siber Guvenlik",
+    "Yapay Zeka & Veri",
+    "DevOps & Bulut"
+};
+
+#define TERMINAL_TABS (ROLE_TABS[app->role_profile])
 
 // -----------------------------------------------------------------------------
 // Helper: Key labels
@@ -302,6 +397,48 @@ static void terminal_remote_send_raw_key(TerminalRemoteApp* app, uint8_t keycode
     terminal_remote_send_key(app, km, false);
 }
 
+static void terminal_remote_send_panic(TerminalRemoteApp* app) {
+    if(!app->connected || !app->ble_hid_profile) return;
+
+    // Send Super (GUI) + L to lock screen (Linux & Windows)
+    ble_profile_hid_kb_press(app->ble_hid_profile, KEY_MOD_LEFT_GUI | HID_KEYBOARD_L);
+    furi_delay_ms(30);
+    ble_profile_hid_kb_release_all(app->ble_hid_profile);
+
+    // RGB Red Flash + Haptic Vibration
+    if(app->led_enabled) {
+        furi_hal_light_set(LightRed, 255);
+        furi_hal_light_set(LightBlue, 0);
+        furi_hal_light_set(LightGreen, 0);
+    }
+    if(app->notifications) {
+        notification_message(app->notifications, &sequence_double_vibro);
+    }
+    furi_delay_ms(150);
+    if(app->led_enabled) {
+        furi_hal_light_set(LightRed, 0);
+        if(app->connected) furi_hal_light_set(LightBlue, 255);
+    }
+
+    strlcpy(app->last_action, "[!] PANIC: WORKSTATION LOCKED", sizeof(app->last_action));
+    strlcpy(app->status_toast, "PANIC: Locked!", sizeof(app->status_toast));
+}
+
+static void terminal_remote_type_string(TerminalRemoteApp* app, const char* str) {
+    if(!app->connected || !app->ble_hid_profile || !str) return;
+    for(size_t i = 0; str[i] != '\0'; i++) {
+        uint8_t c = (uint8_t)str[i];
+        if(c >= sizeof(hid_asciimap) / sizeof(hid_asciimap[0])) continue;
+        uint16_t key = hid_asciimap[c];
+        if(key != HID_KEYBOARD_NONE) {
+            ble_profile_hid_kb_press(app->ble_hid_profile, key);
+            furi_delay_ms(12);
+            ble_profile_hid_kb_release_all(app->ble_hid_profile);
+            furi_delay_ms(8);
+        }
+    }
+}
+
 // -----------------------------------------------------------------------------
 // Preset & Settings Management
 // -----------------------------------------------------------------------------
@@ -407,6 +544,7 @@ static void terminal_remote_save_settings(TerminalRemoteApp* app) {
             .key_delay_ms = app->key_delay_ms,
             .tab1_name_idx = app->tab1_name_idx,
             .tab2_name_idx = app->tab2_name_idx,
+            .role_profile = (uint8_t)app->role_profile,
         };
         storage_file_write(file, &s, sizeof(s));
     }
@@ -436,6 +574,9 @@ static void terminal_remote_load_settings(TerminalRemoteApp* app) {
             }
             if(s.tab1_name_idx < 4) app->tab1_name_idx = s.tab1_name_idx;
             if(s.tab2_name_idx < 4) app->tab2_name_idx = s.tab2_name_idx;
+            if(s.role_profile < RoleProfileCount) {
+                app->role_profile = (RoleProfile)s.role_profile;
+            }
             FURI_LOG_I(TAG, "Settings loaded from %s", SETTINGS_FILE_PATH);
         }
     }
@@ -588,6 +729,72 @@ static void draw_scene_controller(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_draw_str(canvas, 102, 60, ">:Tab+");
 }
 
+static void draw_scene_mouse(Canvas* canvas, TerminalRemoteApp* app) {
+    // Header
+    canvas_draw_box(canvas, 0, 0, 128, 12);
+    canvas_set_color(canvas, ColorWhite);
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ D-PAD MOUSE / SUNUM ]");
+    canvas_set_color(canvas, ColorBlack);
+
+    // Frame
+    canvas_draw_rframe(canvas, 2, 14, 124, 38, 3);
+
+    // Crosshair target in center
+    canvas_draw_circle(canvas, 64, 33, 14);
+    canvas_draw_circle(canvas, 64, 33, 4);
+    canvas_draw_line(canvas, 64, 16, 64, 50);
+    canvas_draw_line(canvas, 47, 33, 81, 33);
+
+    // Status / Mode Info
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str(canvas, 6, 24, "MOD: MOUSE");
+    canvas_draw_str(canvas, 6, 34, "ADIM: 14px");
+    if(app->btn_ok) {
+        canvas_draw_str(canvas, 86, 34, "[TIK!]");
+    }
+
+    // Bottom Bar
+    canvas_draw_line(canvas, 0, 54, 128, 54);
+    canvas_draw_str(canvas, 3, 62, "OK: Sol Tik | OK+: Cift");
+    canvas_draw_str_aligned(canvas, 125, 62, AlignRight, AlignBottom, "BK: Menu");
+}
+
+static void draw_scene_role_select(Canvas* canvas, TerminalRemoteApp* app) {
+    canvas_draw_box(canvas, 0, 0, 128, 12);
+    canvas_set_color(canvas, ColorWhite);
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ CALISMA PROFILI ]");
+    canvas_set_color(canvas, ColorBlack);
+
+    for(uint8_t i = 0; i < RoleProfileCount; ++i) {
+        uint8_t y = 23 + (i * 9);
+        char line[32];
+        const char* active_tag = (i == app->role_profile) ? " [AKTIF]" : "";
+        snprintf(line, sizeof(line), "%d. %s%s", i + 1, ROLE_NAMES[i], active_tag);
+
+        if(app->role_select_index == i) {
+            canvas_draw_box(canvas, 2, y - 7, 124, 8);
+            canvas_set_color(canvas, ColorWhite);
+            canvas_draw_str(canvas, 4, y, line);
+            canvas_set_color(canvas, ColorBlack);
+        } else {
+            canvas_draw_str(canvas, 4, y, line);
+        }
+    }
+
+    // Tab preview of selected profile
+    const TabConfig* tabs = ROLE_TABS[app->role_select_index];
+    char preview[48];
+    snprintf(preview, sizeof(preview), "T1:%s  T2:%s  T3:%s", tabs[0].name, tabs[1].name, tabs[2].name);
+
+    canvas_draw_rframe(canvas, 1, 44, 126, 9, 1);
+    canvas_draw_str(canvas, 3, 51, preview);
+
+    canvas_draw_line(canvas, 0, 55, 127, 55);
+    canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "OK: Aktif Et  |  BK: Menu");
+}
+
 static void draw_scene_menu(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_draw_box(canvas, 0, 0, 128, 12);
     canvas_set_color(canvas, ColorWhite);
@@ -601,6 +808,9 @@ static void draw_scene_menu(Canvas* canvas, TerminalRemoteApp* app) {
     char bt_label[32];
     snprintf(bt_label, sizeof(bt_label), "Bluetooth: %s", app->connected ? "Bagli [OK]" : "Baglan [Bekliyor]");
 
+    char role_label[32];
+    snprintf(role_label, sizeof(role_label), "Mod: %s", ROLE_NAMES[app->role_profile]);
+
     typedef struct {
         const char* badge;
         const char* label;
@@ -609,8 +819,11 @@ static void draw_scene_menu(Canvas* canvas, TerminalRemoteApp* app) {
     const MenuRow items[] = {
         {.badge = ">_",  .label = "Terminal Console"},
         {.badge = "BT",  .label = bt_label},
+        {.badge = "(!)", .label = "PANIC: Kilit (Super+L)"},
+        {.badge = "::",  .label = role_label},
+        {.badge = "><",  .label = "D-Pad Mouse / Sunum"},
         {.badge = "#P",  .label = p_str},
-        {.badge = ">>",  .label = "Quick Macros"},
+        {.badge = ">>",  .label = "Quick Macros & Payloads"},
         {.badge = "-o-", .label = "Settings & Remap"},
         {.badge = "(?)", .label = "Cheat Sheet / Help"},
         {.badge = "[X]", .label = "Exit Terminal Remote"},
@@ -687,18 +900,24 @@ static void draw_scene_preset_select(Canvas* canvas, TerminalRemoteApp* app) {
 static void draw_scene_quick_macros(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_draw_box(canvas, 0, 0, 128, 12);
     canvas_set_color(canvas, ColorWhite);
-    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ QUICK MACROS ]");
+    canvas_set_font(canvas, FontSecondary);
+    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ QUICK MACROS & PAYLOADS ]");
     canvas_set_color(canvas, ColorBlack);
 
     const char* macros[] = {
-        "1. ^C  SIGINT (Interrupt)",
-        "2. ^D  EOF (Exit Session)",
-        "3. ^L  Clear Screen",
-        "4. ^Z  SIGTSTP (Suspend)",
-        "5. ^R  Reverse History Search",
-        "6. TAB Auto-complete",
-        "7. ESC Escape Key",
-        "8. ^A  Start of Line",
+        "1. [!] PANIC: Kilit (Super+L)",
+        "2. ^C  SIGINT (Interrupt)",
+        "3. ^D  EOF (Exit Session)",
+        "4. ^L  Clear Screen",
+        "5. ^Z  SIGTSTP (Suspend)",
+        "6. ^R  Reverse History Search",
+        "7. TAB Auto-complete",
+        "8. [Net]  ip a | grep inet",
+        "9. [Git]  git status -s",
+        "10.[Dock] docker ps --format table",
+        "11.[Port] ss -tulnp",
+        "12.[Htop] htop || top",
+        "13.[Rev]  nc -lvnp 4444",
     };
     uint8_t count = sizeof(macros) / sizeof(macros[0]);
 
@@ -733,7 +952,7 @@ static void draw_scene_settings(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ SETTINGS ]");
     canvas_set_color(canvas, ColorBlack);
 
-    const char* back_names[] = {"Preset ^C", "Force ^C", "Escape", "^D (EOF)", "Menu Only"};
+    const char* back_names[] = {"Preset ^C", "Force ^C", "Escape", "^D (EOF)", "Panic (Lock)", "Menu Only"};
     char line1[32];
     char line2[32];
     char line3[32];
@@ -742,6 +961,7 @@ static void draw_scene_settings(Canvas* canvas, TerminalRemoteApp* app) {
     char line6[32];
     char line7[32] = "7. [Save Settings to SD]";
     char line8[32] = "8. [Reload presets.dat]";
+    char line9[32];
 
     snprintf(line1, sizeof(line1), "1. Back Key: <%s>", back_names[app->back_action]);
     snprintf(line2, sizeof(line2), "2. Tab 1:    <%s>", TAB1_NAMES[app->tab1_name_idx]);
@@ -749,8 +969,9 @@ static void draw_scene_settings(Canvas* canvas, TerminalRemoteApp* app) {
     snprintf(line4, sizeof(line4), "4. Vibro:    <%s>", app->haptics_enabled ? "ON" : "OFF");
     snprintf(line5, sizeof(line5), "5. Blue LED: <%s>", app->led_enabled ? "ON" : "OFF");
     snprintf(line6, sizeof(line6), "6. Delay:    <%dms>", app->key_delay_ms);
+    snprintf(line9, sizeof(line9), "9. Role:     <%s>", ROLE_NAMES[app->role_profile]);
 
-    const char* lines[] = {line1, line2, line3, line4, line5, line6, line7, line8};
+    const char* lines[] = {line1, line2, line3, line4, line5, line6, line7, line8, line9};
     uint8_t count = sizeof(lines) / sizeof(lines[0]);
 
     for(uint8_t i = 0; i < 4; ++i) {
@@ -823,6 +1044,12 @@ static void terminal_remote_draw_callback(Canvas* canvas, void* context) {
     case SceneMenu:
         draw_scene_menu(canvas, app);
         break;
+    case SceneMouse:
+        draw_scene_mouse(canvas, app);
+        break;
+    case SceneRoleProfileSelect:
+        draw_scene_role_select(canvas, app);
+        break;
     case ScenePresetSelect:
         draw_scene_preset_select(canvas, app);
         break;
@@ -870,7 +1097,10 @@ static void handle_controller_input(TerminalRemoteApp* app, InputEvent* event) {
             KeyMapping km = {0};
             const char* act_str = NULL;
 
-            if(app->back_action == BackActionFromPreset) {
+            if(app->back_action == BackActionPanicLock) {
+                terminal_remote_send_panic(app);
+                return;
+            } else if(app->back_action == BackActionFromPreset) {
                 km = p->keymap[FlipperButtonBack];
                 act_str = "[^C] SIGINT (Break)";
             } else if(app->back_action == BackActionForceCtrlC) {
@@ -890,6 +1120,12 @@ static void handle_controller_input(TerminalRemoteApp* app, InputEvent* event) {
             }
             if(app->haptics_enabled && app->notifications) {
                 notification_message(app->notifications, &sequence_single_vibro);
+            }
+            if(km.keycode == HID_KEYBOARD_C && (km.modifiers & MOD_CTRL_BIT) && app->led_enabled) {
+                furi_hal_light_set(LightRed, 255);
+                furi_delay_ms(40);
+                furi_hal_light_set(LightRed, 0);
+                if(app->connected) furi_hal_light_set(LightBlue, 255);
             }
             terminal_remote_send_raw_key(app, km.keycode, km.modifiers);
         }
@@ -914,6 +1150,12 @@ static void handle_controller_input(TerminalRemoteApp* app, InputEvent* event) {
         if(app->haptics_enabled && app->notifications) {
             notification_message(app->notifications, &sequence_single_vibro);
         }
+        if(app->led_enabled) {
+            furi_hal_light_set(LightGreen, 255);
+            furi_delay_ms(30);
+            furi_hal_light_set(LightGreen, 0);
+            if(app->connected) furi_hal_light_set(LightBlue, 255);
+        }
         terminal_remote_send_raw_key(app, TERMINAL_TABS[app->active_tab].keycode, MOD_ALT_BIT);
         return;
     } else if(event->key == InputKeyLeft && event->type == InputTypeRelease) {
@@ -937,6 +1179,12 @@ static void handle_controller_input(TerminalRemoteApp* app, InputEvent* event) {
             sizeof(app->tab_last_action[0]));
         if(app->haptics_enabled && app->notifications) {
             notification_message(app->notifications, &sequence_single_vibro);
+        }
+        if(app->led_enabled) {
+            furi_hal_light_set(LightGreen, 255);
+            furi_delay_ms(30);
+            furi_hal_light_set(LightGreen, 0);
+            if(app->connected) furi_hal_light_set(LightBlue, 255);
         }
         terminal_remote_send_raw_key(app, TERMINAL_TABS[app->active_tab].keycode, MOD_ALT_BIT);
         return;
@@ -1002,16 +1250,99 @@ static void handle_connection_input(TerminalRemoteApp* app, InputEvent* event) {
     }
 }
 
+static void handle_mouse_input(TerminalRemoteApp* app, InputEvent* event) {
+    if(!app->connected || !app->ble_hid_profile) {
+        if(event->type == InputTypeShort && event->key == InputKeyBack) {
+            app->current_scene = SceneMenu;
+        }
+        return;
+    }
+
+    const int8_t step = 14;
+
+    if(event->type == InputTypePress || event->type == InputTypeRepeat) {
+        switch(event->key) {
+        case InputKeyUp:
+            ble_profile_hid_mouse_move(app->ble_hid_profile, 0, -step);
+            break;
+        case InputKeyDown:
+            ble_profile_hid_mouse_move(app->ble_hid_profile, 0, step);
+            break;
+        case InputKeyLeft:
+            ble_profile_hid_mouse_move(app->ble_hid_profile, -step, 0);
+            break;
+        case InputKeyRight:
+            ble_profile_hid_mouse_move(app->ble_hid_profile, step, 0);
+            break;
+        case InputKeyOk:
+            app->btn_ok = true;
+            ble_profile_hid_mouse_press(app->ble_hid_profile, 1);
+            break;
+        default:
+            break;
+        }
+    } else if(event->type == InputTypeRelease) {
+        if(event->key == InputKeyOk) {
+            app->btn_ok = false;
+            ble_profile_hid_mouse_release(app->ble_hid_profile, 1);
+        }
+    } else if(event->type == InputTypeShort) {
+        if(event->key == InputKeyBack) {
+            app->current_scene = SceneMenu;
+        }
+    } else if(event->type == InputTypeLong) {
+        if(event->key == InputKeyOk) {
+            // Double Click
+            ble_profile_hid_mouse_press(app->ble_hid_profile, 1);
+            furi_delay_ms(20);
+            ble_profile_hid_mouse_release(app->ble_hid_profile, 1);
+            furi_delay_ms(60);
+            ble_profile_hid_mouse_press(app->ble_hid_profile, 1);
+            furi_delay_ms(20);
+            ble_profile_hid_mouse_release(app->ble_hid_profile, 1);
+        }
+    }
+}
+
+static void handle_role_select_input(TerminalRemoteApp* app, InputEvent* event) {
+    if(event->type != InputTypeShort) return;
+
+    switch(event->key) {
+    case InputKeyUp:
+        if(app->role_select_index > 0) app->role_select_index--;
+        else app->role_select_index = RoleProfileCount - 1;
+        break;
+    case InputKeyDown:
+        if(app->role_select_index < RoleProfileCount - 1) app->role_select_index++;
+        else app->role_select_index = 0;
+        break;
+    case InputKeyOk:
+        app->role_profile = (RoleProfile)app->role_select_index;
+        terminal_remote_save_settings(app);
+        snprintf(app->last_action, sizeof(app->last_action), "Mod: %s", ROLE_NAMES[app->role_profile]);
+        if(app->haptics_enabled && app->notifications) {
+            notification_message(app->notifications, &sequence_single_vibro);
+        }
+        app->current_scene = SceneController;
+        break;
+    case InputKeyBack:
+        app->current_scene = SceneMenu;
+        break;
+    default:
+        break;
+    }
+}
+
 static void handle_menu_input(TerminalRemoteApp* app, InputEvent* event) {
     if(event->type != InputTypeShort) return;
 
     switch(event->key) {
     case InputKeyUp:
         if(app->menu_index > 0) app->menu_index--;
-        else app->menu_index = 6;
+        else app->menu_index = 9;
         break;
     case InputKeyDown:
-        if(app->menu_index < 6) app->menu_index++;
+        if(app->menu_index < 9) app->menu_index++;
         else app->menu_index = 0;
         break;
     case InputKeyOk:
@@ -1022,22 +1353,33 @@ static void handle_menu_input(TerminalRemoteApp* app, InputEvent* event) {
         case 1: // Bluetooth Connection / Status
             app->current_scene = SceneConnection;
             break;
-        case 2: // Preset Select
+        case 2: // Panic Key (Super+L)
+            terminal_remote_send_panic(app);
+            app->current_scene = SceneController;
+            break;
+        case 3: // Role Profile Select
+            app->current_scene = SceneRoleProfileSelect;
+            app->role_select_index = (uint8_t)app->role_profile;
+            break;
+        case 4: // D-Pad Mouse Mode
+            app->current_scene = SceneMouse;
+            break;
+        case 5: // Preset Select
             app->current_scene = ScenePresetSelect;
             app->preset_select_index = app->active_preset_index;
             break;
-        case 3: // Quick Macros
+        case 6: // Quick Macros & Payloads
             app->current_scene = SceneQuickMacros;
             app->status_toast[0] = '\0';
             break;
-        case 4: // Settings
+        case 7: // Settings
             app->current_scene = SceneSettings;
             app->status_toast[0] = '\0';
             break;
-        case 5: // Cheat sheet
+        case 8: // Cheat sheet
             app->current_scene = SceneCheatSheet;
             break;
-        case 6: // Exit
+        case 9: // Exit
             app->running = false;
             break;
         }
@@ -1085,45 +1427,64 @@ static void handle_quick_macros_input(TerminalRemoteApp* app, InputEvent* event)
     switch(event->key) {
     case InputKeyUp:
         if(app->macro_index > 0) app->macro_index--;
-        else app->macro_index = 7;
+        else app->macro_index = 12;
         break;
     case InputKeyDown:
-        if(app->macro_index < 7) app->macro_index++;
+        if(app->macro_index < 12) app->macro_index++;
         else app->macro_index = 0;
         break;
     case InputKeyOk:
         switch(app->macro_index) {
-        case 0: // ^C
+        case 0: // Panic Lock
+            terminal_remote_send_panic(app);
+            break;
+        case 1: // ^C
             terminal_remote_send_raw_key(app, HID_KEYBOARD_C, MOD_CTRL_BIT);
             strlcpy(app->status_toast, "Sent: ^C (SIGINT)", sizeof(app->status_toast));
             break;
-        case 1: // ^D
+        case 2: // ^D
             terminal_remote_send_raw_key(app, HID_KEYBOARD_D, MOD_CTRL_BIT);
             strlcpy(app->status_toast, "Sent: ^D (EOF)", sizeof(app->status_toast));
             break;
-        case 2: // ^L
+        case 3: // ^L
             terminal_remote_send_raw_key(app, HID_KEYBOARD_L, MOD_CTRL_BIT);
             strlcpy(app->status_toast, "Sent: ^L (Clear)", sizeof(app->status_toast));
             break;
-        case 3: // ^Z
+        case 4: // ^Z
             terminal_remote_send_raw_key(app, HID_KEYBOARD_Z, MOD_CTRL_BIT);
             strlcpy(app->status_toast, "Sent: ^Z (Suspend)", sizeof(app->status_toast));
             break;
-        case 4: // ^R
+        case 5: // ^R
             terminal_remote_send_raw_key(app, HID_KEYBOARD_R, MOD_CTRL_BIT);
             strlcpy(app->status_toast, "Sent: ^R (Search)", sizeof(app->status_toast));
             break;
-        case 5: // TAB
+        case 6: // TAB
             terminal_remote_send_raw_key(app, HID_KEYBOARD_TAB, 0);
             strlcpy(app->status_toast, "Sent: TAB", sizeof(app->status_toast));
             break;
-        case 6: // ESC
-            terminal_remote_send_raw_key(app, HID_KEYBOARD_ESCAPE, 0);
-            strlcpy(app->status_toast, "Sent: ESC", sizeof(app->status_toast));
+        case 7: // Net IP
+            terminal_remote_type_string(app, "ip a | grep inet\n");
+            strlcpy(app->status_toast, "Sent: ip a", sizeof(app->status_toast));
             break;
-        case 7: // ^A
-            terminal_remote_send_raw_key(app, HID_KEYBOARD_A, MOD_CTRL_BIT);
-            strlcpy(app->status_toast, "Sent: ^A (Home)", sizeof(app->status_toast));
+        case 8: // Git status
+            terminal_remote_type_string(app, "git status -s\n");
+            strlcpy(app->status_toast, "Sent: git status", sizeof(app->status_toast));
+            break;
+        case 9: // Docker ps
+            terminal_remote_type_string(app, "docker ps --format \"table {{.Names}}\\t{{.Status}}\"\n");
+            strlcpy(app->status_toast, "Sent: docker ps", sizeof(app->status_toast));
+            break;
+        case 10: // Port scan
+            terminal_remote_type_string(app, "ss -tulnp\n");
+            strlcpy(app->status_toast, "Sent: ss -tulnp", sizeof(app->status_toast));
+            break;
+        case 11: // Htop
+            terminal_remote_type_string(app, "htop || top\n");
+            strlcpy(app->status_toast, "Sent: htop", sizeof(app->status_toast));
+            break;
+        case 12: // Revshell listener
+            terminal_remote_type_string(app, "nc -lvnp 4444\n");
+            strlcpy(app->status_toast, "Sent: nc listener", sizeof(app->status_toast));
             break;
         }
         if(app->haptics_enabled && app->notifications) {
@@ -1144,10 +1505,10 @@ static void handle_settings_input(TerminalRemoteApp* app, InputEvent* event) {
     switch(event->key) {
     case InputKeyUp:
         if(app->settings_index > 0) app->settings_index--;
-        else app->settings_index = 7;
+        else app->settings_index = 8;
         break;
     case InputKeyDown:
-        if(app->settings_index < 7) app->settings_index++;
+        if(app->settings_index < 8) app->settings_index++;
         else app->settings_index = 0;
         break;
     case InputKeyOk:
@@ -1191,6 +1552,11 @@ static void handle_settings_input(TerminalRemoteApp* app, InputEvent* event) {
             terminal_remote_load_anki_presets(app);
             strlcpy(app->status_toast, "Presets Reloaded!", sizeof(app->status_toast));
             break;
+        case 8: // Role Profile
+            app->role_profile = (RoleProfile)((app->role_profile + 1) % RoleProfileCount);
+            terminal_remote_save_settings(app);
+            snprintf(app->status_toast, sizeof(app->status_toast), "Role: %s", ROLE_NAMES[app->role_profile]);
+            break;
         }
         break;
     case InputKeyBack:
@@ -1217,6 +1583,12 @@ static void terminal_remote_input_handler(TerminalRemoteApp* app, InputEvent* ev
         break;
     case SceneMenu:
         handle_menu_input(app, event);
+        break;
+    case SceneMouse:
+        handle_mouse_input(app, event);
+        break;
+    case SceneRoleProfileSelect:
+        handle_role_select_input(app, event);
         break;
     case ScenePresetSelect:
         handle_preset_select_input(app, event);

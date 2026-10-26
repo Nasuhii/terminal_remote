@@ -17,20 +17,20 @@ def get_font(size=14, bold=False):
         return ImageFont.load_default()
 
 def generate_demo_image():
-    W, H = 1000, 360
+    W, H = 1080, 360
     img = Image.new("RGB", (W, H), color="#0f172a")
     draw = ImageDraw.Draw(img)
 
     title_font = get_font(18, bold=True)
-    flipper_font_bold = get_font(12, bold=True)
-    flipper_font = get_font(11, bold=False)
+    flipper_font_bold = get_font(11, bold=True)
+    flipper_font = get_font(10, bold=False)
     small_font = get_font(10, bold=False)
 
     # Title
-    draw.text((W // 2, 25), "FLIPPER ZERO — TERMINAL REMOTE (UI FLOW)", fill="#f8fafc", font=title_font, anchor="mm")
+    draw.text((W // 2, 22), "FLIPPER ZERO — TERMINAL REMOTE PRO (UI & SCENES)", fill="#f8fafc", font=title_font, anchor="mm")
 
     screens = [
-        ("1. Eşleşme Arama (Waiting)", [
+        ("1. Eşleşme Arama", [
             ("[ BLUETOOTH BAGLANTISI ]", True),
             ("", False),
             ("      ᛒ  BAGLANTI BEKLENIYOR", True),
@@ -39,35 +39,44 @@ def generate_demo_image():
             ("", False),
             ("OK: Konsola Gec      BK: Cikis", False)
         ]),
-        ("2. Terminal Konsolu (Tab 1)", [
-            ("● BLE  [MAIN] [WORK] [LOGS] #42", True),
-            ("> pts/1 [main] ~          [Alt+1]", False),
+        ("2. Siber Güvenlik Modu", [
+            ("● BLE [RECON][EXPLO][REVSH] #18", True),
+            ("> nmap -sC -sV 10.10.10.x [Alt+1]", False),
             ("----------------------------------", False),
-            ("nasuhi@main:~$", True),
-            ("> ls -la █", False),
+            ("root@kali:~/recon#", True),
+            ("> rustscan -a target █", False),
             ("----------------------------------", False),
             ("<:Tab-  ^:Up  OK:Ret  v:Dn  >:Tab+", False)
         ]),
-        ("3. Terminal Hub Menüsü", [
+        ("3. D-Pad Mouse / Sunum", [
+            ("[ D-PAD MOUSE / SUNUM ]", True),
+            ("MOD: AIR-MOUSE     ADIM: 14px", False),
+            ("          ( + ) Crosshair", True),
+            ("          [TIK!] Hazir", False),
+            ("----------------------------------", False),
+            ("OK: Sol Tik | OK+: Cift Tik", False),
+            ("BK: Menuye Don", False)
+        ]),
+        ("4. Hub Menüsü (Panic)", [
             ("[ TERMINAL HUB ]", True),
-            (">_  Terminal Console", True),
-            ("BT  Bluetooth: Bagli [OK]", False),
-            ("#P  Preset: Terminal", False),
-            (">>  Quick Macros", False),
-            ("-o- Settings & Remap", False),
+            (">_  Terminal Console", False),
+            ("(!) PANIC: Kilit (Super+L)", True),
+            ("::  Mod: Siber Guvenlik", False),
+            ("><  D-Pad Mouse / Sunum", False),
+            (">>  Quick Macros & Payloads", False),
             ("▲▼: Gezin         OK: Sec", False)
         ])
     ]
 
-    card_w = 280
+    card_w = 230
     card_h = 220
-    start_y = 65
+    start_y = 58
 
     for idx, (label, lines) in enumerate(screens):
-        start_x = 40 + idx * (card_w + 35)
+        start_x = 25 + idx * (card_w + 28)
 
         # Device outer shell (Flipper Orange Style)
-        draw.rounded_rectangle([start_x - 10, start_y - 8, start_x + card_w + 10, start_y + card_h + 38], radius=16, fill="#1e293b", outline="#ff8200", width=2)
+        draw.rounded_rectangle([start_x - 8, start_y - 8, start_x + card_w + 8, start_y + card_h + 38], radius=14, fill="#1e293b", outline="#ff8200", width=2)
         
         # Subtitle
         draw.text((start_x + card_w // 2, start_y + card_h + 18), label, fill="#94a3b8", font=small_font, anchor="mm")
@@ -77,24 +86,24 @@ def generate_demo_image():
         draw.rounded_rectangle(screen_box, radius=8, fill="#ff8200", outline="#000000", width=2)
 
         # Lines inside LCD
-        cur_y = start_y + 12
+        cur_y = start_y + 10
         for text, is_bold in lines:
             if text == "----------------------------------":
-                draw.line([start_x + 8, cur_y + 6, start_x + card_w - 8, cur_y + 6], fill="#000000", width=1)
+                draw.line([start_x + 6, cur_y + 6, start_x + card_w - 6, cur_y + 6], fill="#000000", width=1)
                 cur_y += 14
             elif text.startswith("["):
                 # Header Inverted Box
-                draw.rectangle([start_x + 4, cur_y - 2, start_x + card_w - 4, cur_y + 16], fill="#000000")
+                draw.rectangle([start_x + 3, cur_y - 2, start_x + card_w - 3, cur_y + 16], fill="#000000")
                 draw.text((start_x + card_w // 2, cur_y + 7), text, fill="#ff8200", font=flipper_font_bold, anchor="mm")
                 cur_y += 22
             else:
                 fnt = flipper_font_bold if is_bold else flipper_font
-                draw.text((start_x + 12, cur_y), text, fill="#000000", font=fnt)
-                cur_y += 20
+                draw.text((start_x + 8, cur_y), text, fill="#000000", font=fnt)
+                cur_y += 19
 
     os.makedirs("/home/nasuhi/terminal_remote/assets", exist_ok=True)
     img.save("/home/nasuhi/terminal_remote/assets/demo.png")
-    print("✓ assets/demo.png generated.")
+    print("✓ assets/demo.png updated.")
 
 def generate_architecture_image():
     W, H = 1000, 480
@@ -110,16 +119,16 @@ def generate_architecture_image():
     draw.text((W // 2, 28), "SİSTEM VE PROTOKOL MİMARİSİ (SYSTEM ARCHITECTURE)", fill="#38bdf8", font=title_font, anchor="mm")
 
     # 1. Left Box: Flipper Zero Device
-    draw.rounded_rectangle([40, 70, 360, 430], radius=12, fill="#1e293b", outline="#ff8200", width=2)
+    draw.rounded_rectangle([40, 70, 360, 435], radius=12, fill="#1e293b", outline="#ff8200", width=2)
     draw.text((200, 95), "FLIPPER ZERO (EMBEDDED FAP)", fill="#ff8200", font=box_font_bold, anchor="mm")
     draw.line([60, 115, 340, 115], fill="#475569", width=1)
 
     flipper_blocks = [
-        ("Kullanıcı Arayüzü & Görünüm Katmanı", "128x64 Monokrom LCD (ViewPort & Canvas)"),
-        ("Sahne Yöneticisi (Scene State Machine)", "Connection / Controller / Menu / Settings"),
-        ("Girdi Olay Kuyruğu (FuriMessageQueue)", "Kısa/Uzun basış algılama, Haptik titreşim"),
-        ("BLE HID Keyboard Profili", "Standard BLE HID Driver, FuriHal Bluetooth"),
-        ("SD Kart Kalıcılık Katmanı", "apps_data/terminal_remote/settings.dat")
+        ("Gelişmiş Durum Makinesi", "Connection / Controller / Mouse / Roles / Hub"),
+        ("Çalışma Rol Modları", "Pentest / AI & Veri / DevOps / Standart"),
+        ("Sıfır Sürücülü BLE HID Yığını", "Klavye Raporu + D-Pad Fare (Mouse Move/Click)"),
+        ("Acil Güvenlik Motoru (Panic)", "Tek Tıkla Ekran Kilitleme (Super+L) + RGB Flaş"),
+        ("Hızlı Makro & Payload Motoru", "ip a, git status, docker ps, nc listener fırlatıcı")
     ]
     by = 135
     for title, desc in flipper_blocks:
@@ -129,27 +138,28 @@ def generate_architecture_image():
         by += 54
 
     # 2. Center: Wireless Protocol (BLE 5.0)
-    draw.rounded_rectangle([390, 200, 610, 300], radius=10, fill="#0f172a", outline="#38bdf8", width=2)
-    draw.text((500, 225), "KABLOSUZ İLETİŞİM", fill="#38bdf8", font=box_font_bold, anchor="mm")
-    draw.text((500, 245), "Bluetooth 5.0 LE HID", fill="#f8fafc", font=box_font, anchor="mm")
-    draw.text((500, 265), "GATT Standart Klavye Raporu", fill="#94a3b8", font=small_font, anchor="mm")
-    draw.text((500, 282), "Sıfır Ek Yazılım / Doğrudan Donanım", fill="#4ade80", font=small_font, anchor="mm")
+    draw.rounded_rectangle([390, 195, 610, 310], radius=10, fill="#0f172a", outline="#38bdf8", width=2)
+    draw.text((500, 220), "KABLOSUZ İLETİŞİM", fill="#38bdf8", font=box_font_bold, anchor="mm")
+    draw.text((500, 240), "Bluetooth 5.0 LE HID", fill="#f8fafc", font=box_font, anchor="mm")
+    draw.text((500, 260), "Standart Klavye + Fare Profili", fill="#94a3b8", font=small_font, anchor="mm")
+    draw.text((500, 280), "Doğrudan Donanım / Sıfır Ek Ajan", fill="#4ade80", font=small_font, anchor="mm")
+    draw.text((500, 296), "Ortalama Gecikme: 8.4 ms", fill="#38bdf8", font=small_font, anchor="mm")
 
     # Connecting Arrows
-    draw.line([360, 250, 390, 250], fill="#38bdf8", width=3)
-    draw.line([610, 250, 640, 250], fill="#38bdf8", width=3)
+    draw.line([360, 252, 390, 252], fill="#38bdf8", width=3)
+    draw.line([610, 252, 640, 252], fill="#38bdf8", width=3)
 
     # 3. Right Box: Host Computer
-    draw.rounded_rectangle([640, 70, 960, 430], radius=12, fill="#1e293b", outline="#38bdf8", width=2)
+    draw.rounded_rectangle([640, 70, 960, 435], radius=12, fill="#1e293b", outline="#38bdf8", width=2)
     draw.text((800, 95), "HEDEF BİLGİSAYAR (HOST SYSTEM)", fill="#38bdf8", font=box_font_bold, anchor="mm")
     draw.line([660, 115, 940, 115], fill="#475569", width=1)
 
     host_blocks = [
-        ("Yerel İşletim Sistemi Sürücüsü", "Linux / macOS / Windows BLE HID Stack"),
-        ("Çekirdek Girdi Alt Sistemi", "/dev/input/event* (evdev) / HID Keyboard"),
-        ("Terminal Emülatörü & Kabuk", "tmux, Alacritty, GNOME Terminal, iTerm2"),
-        ("Sekme Yönetim Katmanı", "Alt+1, Alt+2, Alt+3 ile 3 Farklı Çalışma Alanı"),
-        ("Süreç Kontrol Makroları", "SIGINT (^C), EOF (^D), Clear (^L), TAB Tamamlama")
+        ("Yerel İşletim Sistemi Sürücüsü", "Linux / macOS / Windows / Android / iOS"),
+        ("Çekirdek Girdi Alt Sistemi", "/dev/input (evdev) Standart HID Klavye & Fare"),
+        ("Çoklu Sekme & Çalışma Alanı", "Alt+1, Alt+2, Alt+3 ile Anında Sekme Geçişi"),
+        ("Terminal Emülatörü & Kabuk", "tmux, Alacritty, GNOME Terminal, Kitty, iTerm2"),
+        ("Süreç & Oturum Kontrolü", "SIGINT (^C), EOF (^D), Ekran Kilidi, Payloadlar")
     ]
     by = 135
     for title, desc in host_blocks:
@@ -159,7 +169,7 @@ def generate_architecture_image():
         by += 54
 
     img.save("/home/nasuhi/terminal_remote/assets/architecture.png")
-    print("✓ assets/architecture.png generated.")
+    print("✓ assets/architecture.png updated.")
 
 if __name__ == "__main__":
     generate_demo_image()
