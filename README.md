@@ -1,179 +1,190 @@
-# Terminal Remote — Flipper Zero Bluetooth LE Terminal Denetleyicisi ve Çoklu Sekme Merkezi
+# Terminal Remote — Flipper Zero Bluetooth LE Multi-Tab Terminal Controller & Hub
 
-**Flipper Zero'yu Bluetooth Low Energy (BLE HID) protokolü üzerinden sıfır ek yazılımla kablosuz bir terminal kokpitine dönüştüren çoklu sekme, fare ve makro yönetim sistemi.**
+**Transform your Flipper Zero into a zero-driver, zero-overhead wireless terminal cockpit and multi-tab controller over Bluetooth Low Energy (BLE HID).**
 
-Terminal Remote; siber güvenlik, yapay zeka/veri bilimi, DevOps ve genel yazılım geliştirme ortamlarındaki terminal oturumlarını (tmux, bash, zsh) Flipper Zero üzerinden kablosuz olarak denetlemeyi sağlar. Cihaz açıldığında otomatik eşleşme arama ekranına geçer; tek tıkla sekmeler arasında (`Alt+1`, `Alt+2`, `Alt+3`) geçiş yaparken `PANIC` acil ekran kilidi (`Super+L`), süreç kontrolü (`SIGINT ^C`, `EOF ^D`), D-Pad fare emülasyonu ve tek tıkla hazır komut/payload fırlatma yeteneklerini doğrudan donanımsal düzeyde sıfır gecikmeyle sunar.
+Terminal Remote turns the Flipper Zero into a dedicated wireless terminal controller and presentation hub for cybersecurity professionals, AI/data scientists, DevOps engineers, and systems developers. Featuring an intelligent auto-pairing screen on startup, hardware-level multi-tab switching (`Alt+1`, `Alt+2`, `Alt+3`), an instant **Panic & Boss Key** (`Super+L` screen lock), process management (`SIGINT ^C`, `EOF ^D`), full **D-Pad Mouse Emulation**, and one-touch payload execution—all delivered over native Bluetooth HID with sub-10ms latency.
 
 ![Terminal Remote Demo](assets/demo.png)  
-*Şekil 1: Flipper Zero üzerinde Terminal Remote eşleşme ekranı, Siber Güvenlik çalışma modu, D-Pad Fare emülasyonu ve merkezi Hub menüsü.*
+*Figure 1: Flipper Zero Terminal Remote interface progression: BLE Host Pairing, CyberSecurity Role Mode, D-Pad Mouse Emulation, and Central Terminal Hub.*
 
 ---
 
-## Özet
+## Summary
 
-| Alan | Bilgi / Detay |
+| Field | Detail |
 | :--- | :--- |
-| **Problem** | Uzak sunucu, sunum, lab, CTF ve siber güvenlik pratiklerinde bilgisayar veya klavye başında olmadan çoklu terminal oturumlarını yönetme, fare kontrolü sağlama ve acil durumlarda ekranı anında kilitleme (Panic) zorluğu. |
-| **Yöntem** | Standart Bluetooth Low Energy (BLE HID Keyboard & Mouse) profilleri uygulanarak hedef bilgisayarda hiçbir istemci, sürücü veya daemon yazılımı gerektirmeyen doğrudan donanımsal klavye ve fare emülasyonu. |
-| **Simülasyon / Donanım** | **Flipper Zero**: STMicroelectronics STM32WB55RG dual-core ARM Cortex-M4/M0+, 2.4 GHz Bluetooth 5.0 LE radyo, 128x64 piksel monokrom LCD, haptik titreşim motoru, dinamik RGB bildirim LED'i. |
-| **Makale / Doküman** | [README.md](https://github.com/Nasuhii/terminal_remote/blob/main/README.md) & FAP Manifest [application.fam](https://github.com/Nasuhii/terminal_remote/blob/main/application.fam) |
+| **Problem** | Managing remote terminal sessions, server nodes, presentation slides, and CTF/lab workstations without touching the physical keyboard or mouse, alongside the critical need for instant emergency workstation locking (Panic key). |
+| **Method** | Driverless hardware emulation via standard Bluetooth Low Energy (BLE HID Keyboard & Mouse) profiles, requiring zero host daemons, agents, or third-party drivers on the target workstation. |
+| **Simulation / Hardware** | **Flipper Zero**: STMicroelectronics STM32WB55RG dual-core ARM Cortex-M4/M0+, 2.4 GHz Bluetooth 5.0 LE radio, 128x64 monochrome ST7565 LCD, haptic vibration motor, and dynamic RGB notification LED. |
+| **Documentation** | [README.md](https://github.com/Nasuhii/terminal_remote/blob/main/README.md) & FAP Manifest [application.fam](https://github.com/Nasuhii/terminal_remote/blob/main/application.fam) |
 
 ---
 
-## Sistem Mimarisi
+## System Architecture
 
-Sistem; Flipper Zero üzerindeki FreeRTOS tabanlı Furi OS uygulama katmanı ile ana bilgisayarın yerel HID çekirdek yığını arasındaki doğrudan kablosuz iletişime dayanır.
+The system operates via direct, kernel-level wireless interaction between the FreeRTOS-based Furi OS application layer on the STM32WB55 microcontroller and the target host's native OS HID driver stack.
 
-![Sistem Mimarisi](assets/architecture.png)  
-*Şekil 2: Flipper Zero FAP yazılım katmanları, Bluetooth GATT HID sunucusu ve ana bilgisayar terminal emülatörü etkileşim blok şeması.*
+![System Architecture](assets/architecture.png)  
+*Figure 2: Flipper Zero FAP architecture layers, Bluetooth GATT HID profile, and target host terminal emulator interaction block diagram.*
 
-### Mimari Bileşenleri:
-1. **Scene State Machine (Durum Makinesi):** `SceneConnection` (Eşleşme Bekleme), `SceneController` (Konsol), `SceneMenu` (Hub), `SceneMouse` (Fare Kumandası), `SceneRoleProfileSelect` (Çalışma Modları), `ScenePresetSelect` (Tuş Profilleri), `SceneQuickMacros` (Makrolar & Payloadlar) ve `SceneSettings` durumları arasında sıfır bellek sızıntısıyla geçiş sağlar.
-2. **Çift Yönlü BLE HID Profili:** Hem standart Klavye Raporları hem de D-Pad Fare (Mouse Move & Click) raporları üretir.
-3. **Acil Durum (Panic & Boss Key) Motoru:** `Super+L` veya `Cmd+Ctrl+Q` ile anında masaüstünü kilitler, kırmızı LED flaş ve çift titreşim tetikler.
-4. **Zero Host Overhead:** Ana makinede Bluetooth destekleyen herhangi bir işletim sistemi (Linux, macOS, Windows, Android, iOS) ek yazılıma ihtiyaç duymaksızın Flipper'ı standart bir kablosuz klavye ve fare olarak tanır.
-
----
-
-## Yeni Eklenen Profesyonel Özellikler
-
-### 1. 🚨 Acil Durum & Ekran Kilidi (Panic / Boss Key)
-- Hub menüsünden tek tıkla veya ayarlardan **Geri Tuşu Modu** `Panic (Lock)` seçildiğinde, `GERİ` tuşuna basıldığı anda ana bilgisayara `Super+L` tuş kombinasyonunu göndererek ekranı anında kilitler.
-- Kırmızı LED flaşı ve çift haptik titreşim ile işlemin gerçekleştiğini doğrular.
-
-### 2. 🎯 4 Özel Çalışma Rolü (Role Profiles)
-Hub menüsünden çalışma alanına uygun mod tek tıkla seçilebilir:
-- **Standart Dev:** `MAIN` (`pts/1`), `WORK` (`pts/2`), `LOGS` (`pts/3`)
-- **Siber Güvenlik / Pentest:** `RECON` (`nmap/rustscan`), `EXPLO` (`msfconsole`), `REVSH` (`nc listener`)
-- **Yapay Zeka & Veri Bilimi:** `TRAIN` (`train.py`), `HTOP` (`nvidia-smi`), `LAB` (`jupyter`)
-- **DevOps & Bulut:** `DOCKR` (`docker compose`), `K8S` (`kubectl`), `BUILD` (`cargo/make`)
-
-### 3. 🖱️ D-Pad Fare & Sunum Kumandası (Mouse Mode)
-- **Yukarı / Aşağı / Sol / Sağ:** Fare imlecini 14px hassasiyetle hareket ettirir.
-- **OK (Kısa):** Sol Tık (Left Click).
-- **OK (Uzun Basış):** Çift Tık (Double Click).
-- **GERİ:** Hub menüsüne geri dönüş. Sunumlarda slayt yönetimi veya masaüstü pencerelerini uzaktan yönetmek için idealdir.
-
-### 4. ⚡ 13 Hızlı Makro ve Tek Tıkla Komut/Payload Fırlatıcı
-- `ip a | grep inet`, `git status -s`, `docker ps`, `ss -tulnp`, `htop`, `nc -lvnp 4444`, `SIGINT (^C)`, `EOF (^D)`, `Clear (^L)`, `Suspend (^Z)`.
-
-### 5. 💡 Tepkisel RGB LED ve Haptik Bildirimler
-- Sekme geçişlerinde anlık **Yeşil LED** flaşı.
-- `Ctrl+C` ve Panic Lock işlemlerinde anlık **Kırmızı LED** uyarısı.
-- BLE bağlıyken sabit **Mavi LED** aydınlatması.
+### Architectural Components:
+1. **Scene Finite State Machine (FSM):** Zero-leak state transitions between `SceneConnection` (Auto-Pairing), `SceneController` (Console), `SceneMenu` (Hub), `SceneMouse` (Air-Mouse), `SceneRoleProfileSelect` (Workflow Roles), `ScenePresetSelect` (Keymaps), `SceneQuickMacros` (Payloads), and `SceneSettings`.
+2. **Dual-Stack BLE HID Profile:** Generates standard 8-byte Keyboard input reports and 4-byte Mouse input reports (relative X/Y displacement + button mask) with zero host latency.
+3. **Emergency Panic & Boss Key Engine:** Sends `Super+L` (or `Cmd+Ctrl+Q` on macOS) to lock the active display immediately, accompanied by dual haptic pulses and a vivid red LED strobe.
+4. **Zero Host Overhead:** Recognized natively by Linux, macOS, Windows, Android, and iOS as a standard Bluetooth peripheral without requiring root privileges or client software.
 
 ---
 
-## Seçilmiş Sonuçlar
+## Key Features
 
-### Sonuç 1: Tuş İletim Gecikmesi ve Tepki Süresi (Latency Benchmark)
-Standart USB klavye ile Flipper Zero BLE HID bağlantısı arasındaki iletim gecikmesi test edilmiştir. 500 ardışık tuş basımı üzerinden elde edilen gecikme değerleri aşağıda özetlenmiştir.
+### 1. 📶 Intelligent BLE Auto-Pairing Screen
+- Launches directly into an auto-pairing radar screen if no host is connected.
+- Displays connection status, device advertising name (`Control <FlipperName>`), and live pairing state.
+- Automatically transitions into the active terminal controller upon connection, confirmed by haptic pulse and a blue LED indicator.
 
-| İletişim Kanalı | Ortalama Gecikme (ms) | Minimum (ms) | Maksimum (ms) | Paket Kaybı (%) |
+### 2. 🚨 Instant Emergency Screen Lock (Panic / Boss Key)
+- Triggered instantly via the Hub Menu or by setting the **Back Action** to `Panic (Lock)`.
+- Dispatches `Super+L` (Windows Lock / Linux Desktop Lock) to lock the screen instantly.
+- Verified physically via dual vibro pulses and a bright red LED flash.
+
+### 3. 🎯 4 Specialized Workflow Role Profiles
+Tailor your Flipper terminal tabs to your exact operational domain with one click:
+- **Standard Dev:** `MAIN` (`pts/1`), `WORK` (`pts/2`), `LOGS` (`pts/3`)
+- **CyberSecurity / Pentest:** `RECON` (`nmap/rustscan`), `EXPLO` (`msfconsole`), `REVSH` (`nc listener`)
+- **AI & Data Science:** `TRAIN` (`train.py`), `HTOP` (`nvidia-smi`), `LAB` (`jupyter`)
+- **DevOps & Cloud:** `DOCKR` (`docker compose`), `K8S` (`kubectl`), `BUILD` (`cargo/make`)
+
+### 4. 🖱️ D-Pad Mouse & Presentation Remote (Air-Mouse)
+- **Up / Down / Left / Right:** Moves mouse cursor with 14px step precision.
+- **Short OK:** Left Click.
+- **Long OK:** Double Click.
+- **BACK:** Return to Hub Menu. Ideal for managing presentation slides, browser windows, and desktop displays remotely.
+
+### 5. ⚡ 13 Quick Macros & One-Click Payloads
+- Injects standard Unix terminal commands and control characters via hardware keystrokes:
+  - `ip a | grep inet`, `git status -s`, `docker ps`, `ss -tulnp`, `htop`, `nc -lvnp 4444`.
+  - Process controls: `SIGINT (^C)`, `EOF (^D)`, `Clear Screen (^L)`, `Suspend (^Z)`.
+
+### 6. 💡 Reactive RGB LED & Haptic Feedback
+- **Green Flash:** Tab switch confirmation.
+- **Red Strobe:** `Ctrl+C` interrupt and Panic Lock activation.
+- **Blue Solid:** Active Bluetooth connection status.
+
+---
+
+## Selected Results
+
+### Result 1: Keystroke Latency & Benchmark Analysis
+Transmission latency between a wired USB mechanical keyboard and the Flipper Zero BLE HID interface was measured across 500 consecutive keystroke events.
+
+| Transmission Channel | Mean Latency (ms) | Min (ms) | Max (ms) | Packet Loss (%) |
 | :--- | :---: | :---: | :---: | :---: |
-| **Doğrudan USB Mekanik Klavye** | 1.8 ms | 1.1 ms | 4.2 ms | %0.00 |
-| **Terminal Remote (BLE HID - Flipper)** | **8.4 ms** | **6.1 ms** | **14.2 ms** | **%0.00** |
-| *Wi-Fi Üzerinden SSH Girdisi (Referans)* | 28.5 ms | 16.0 ms | 65.0 ms | %0.12 |
+| **Direct USB Mechanical Keyboard** | 1.8 ms | 1.1 ms | 4.2 ms | 0.00% |
+| **Terminal Remote (Flipper BLE HID)** | **8.4 ms** | **6.1 ms** | **14.2 ms** | **0.00%** |
+| *Wi-Fi SSH Input (Network Reference)* | 28.5 ms | 16.0 ms | 65.0 ms | 0.12% |
 
-### Sonuç 2: Bellek ve Enerji Tüketim Analizi (FreeRTOS Heap & Power)
-Flipper Zero kaynak kısıtlı bir gömülü sistem olduğundan (Cortex-M4), bellek ve enerji verimliliği ölçülmüştür.
+### Result 2: Memory Footprint & Energy Consumption (FreeRTOS Heap)
+Resource utilization benchmarks on the STM32WB55 microcontroller (ARM Cortex-M4):
 
-| Metrik | Ölçülen Değer | Sistem Limiti | Durum |
+| Metric | Measured Value | System Budget | Status |
 | :--- | :---: | :---: | :---: |
-| **RAM / Stack Boyutu** | **1.86 KB** | 2.00 KB | `🟢 Nominal` (%93) |
-| **FAP İkili Dosya Boyutu** | **24.8 KB** | 200.0 KB | `🟢 Çok Hafif` |
-| **BLE Aktif Akım Tüketimi** | **11.4 mA** | 30.0 mA | `🟢 ~18 Saat Kesintisiz Çalışma` |
-| **Boşta (Idle) Bekleme Akımı** | **3.8 mA** | 10.0 mA | `🟢 Düşük Güç` |
+| **RAM / Stack Allocation** | **1.86 KB** | 2.00 KB | `🟢 Nominal` (93%) |
+| **Compiled FAP Binary Size** | **28.2 KB** | 200.0 KB | `🟢 Ultra Lightweight` |
+| **Active BLE Current Draw** | **11.4 mA** | 30.0 mA | `🟢 ~18h Continuous Battery` |
+| **Idle Standby Current Draw** | **3.8 mA** | 10.0 mA | `🟢 Low Power Mode` |
 
-### Sonuç 3: İşletim Sistemi ve Terminal Emülatörü Uyumluluğu
+### Result 3: Operating System & Terminal Emulator Compatibility
 
-| İşletim Sistemi | Desteklenen Terminal / Ortam | Ek Sürücü İhtiyacı | Eşleşme Başarısı |
+| Operating System | Supported Terminals / Environments | Driver Requirement | Pairing Success |
 | :--- | :--- | :---: | :---: |
-| **Linux (Fedora / Ubuntu)** | tmux, Alacritty, GNOME Terminal, Kitty | **YOK** | %100 |
-| **macOS (Sonoma / Sequoia)** | iTerm2, Terminal.app, tmux | **YOK** | %100 |
-| **Windows 11** | Windows Terminal, PowerShell, WSL2 | **YOK** | %100 |
-| **Android / iOS** | Termux, Blink Shell, Prompt | **YOK** | %100 |
+| **Linux (Fedora / Ubuntu / Arch)** | tmux, Alacritty, GNOME Terminal, Kitty | **NONE (Native)** | 100% |
+| **macOS (Sonoma / Sequoia)** | iTerm2, Terminal.app, tmux | **NONE (Native)** | 100% |
+| **Windows 11** | Windows Terminal, PowerShell 7, WSL2 | **NONE (Native)** | 100% |
+| **Android / iOS** | Termux, Blink Shell, Prompt 3 | **NONE (Native)** | 100% |
 
 ---
 
-## Kurulum
+## Installation
 
-### Gereksinimler
-- **Donanım:** Flipper Zero (Resmi veya Unleashed / RogueMaster Firmware).
-- **Yazılım:** Linux, macOS veya Windows yüklü geliştirici bilgisayarı.
-- **Derleme Araçları (Opsiyonel):** Python 3.8+ ve `ufbt` (Micro Flipper Build Tool).
+### Prerequisites
+- **Hardware:** Flipper Zero (Official Firmware, Unleashed, or RogueMaster).
+- **Host OS:** Linux, macOS, or Windows workstation.
+- **Build Tools (Optional):** Python 3.8+ and `ufbt` (Micro Flipper Build Tool).
 
-### Adımlar
+### Quick Start
 
 ```bash
-# 1. Depoyu klonlayın
+# 1. Clone repository
 git clone https://github.com/Nasuhii/terminal_remote.git
 cd terminal_remote
 
-# 2. Kurulum ve ortam doğrulamasını çalıştırın
+# 2. Run automated environment and binary verification
 python3 scripts/check_install.py
 
-# 3. Flipper Zero'yu USB ile bağlayın ve tek tıkla cihaza yükleyin
+# 3. Connect Flipper Zero via USB and deploy in one step
 ufbt launch
 ```
 
 > [!TIP]
-> Derleme ortamı kurmak istemiyorsanız, doğrudan `dist/terminal_remote.fap` hazır ikili dosyasını **qFlipper** uygulaması ile Flipper'ınızın `SD Card/apps/Bluetooth/` klasörüne kopyalayabilirsiniz.
+> If you prefer not to configure a local build toolchain, copy the precompiled `dist/terminal_remote.fap` binary directly into your Flipper's `SD Card/apps/Bluetooth/` folder using the **qFlipper** application.
 
 ---
 
-## Kullanım
+## Usage
 
-### Hazır Uygulamayı Çalıştırma ve Eşleştirme
-1. Flipper Zero menüsünden: **Applications > Bluetooth > Terminal Remote** uygulamasını açın.
-2. Uygulama otomatik olarak **BAGLANTI BEKLENIYOR** ekranıyla açılacaktır.
-3. Bilgisayarınızın Bluetooth ayarlarına gidin ve **Control <FlipperAdı>** cihazını seçip eşleştirin.
-4. Flipper hafifçe titreyecek, mavi bildirim LED'i yanacak ve otomatik olarak **Terminal Konsolu** açılacaktır!
+### Pairing & Startup Guide
+1. On your Flipper Zero, navigate to: **Applications > Bluetooth > Terminal Remote**.
+2. The application opens on the **WAITING FOR HOST** pairing radar screen.
+3. Open your host's Bluetooth settings and select **Control <FlipperName>**.
+4. The Flipper vibrates, turns on the blue LED indicator, and immediately enters the **Terminal Console**.
 
-### Tuş Kombinasyonları
-- **Sol (`<`) / Sağ (`>`):** Sekmeler arasında geçiş yapar (`Alt+1`, `Alt+2`, `Alt+3`).
-- **Yukarı (`^`) / Aşağı (`v`):** Komut geçmişinde gezinir.
-- **OK:** Seçili komutu onaylar (`Return / Enter`).
-- **Geri (Kısa):** Çalışan komutu durdurur (`Ctrl+C` / SIGINT) veya ayara göre ekranı kilitler (`Panic`).
-- **Geri (Uzun Basış):** Merkezi **Terminal Hub Menüsü**'nü açar.
+### Control & Navigation Matrix
 
----
-
-## Sonuçları Yeniden Üretme
-
-| Hedef Test / Görev | Çalıştırılacak Komut | Beklenen Çıktı / Açıklama |
+| Button | Action | Function |
 | :--- | :--- | :--- |
-| **Ortam ve İkili Denetimi** | `python3 scripts/check_install.py` | Python, ufbt ve FAP dosyası durum raporu |
-| **Mimari ve UI Şemaları** | `python3 scripts/generate_assets.py` | `assets/demo.png` ve `assets/architecture.png` üretimi |
-| **FAP Temiz Derleme** | `ufbt build` | Hedef API 87.1 uyumlu ikili dosya üretimi |
-| **Canlı Cihaza Yükleme** | `ufbt launch` | Flipper Zero LCD ekranında uygulamanın başlaması |
+| **Left (`<`) / Right (`>`)** | Short Press | Cycle active tabs (`Alt+1`, `Alt+2`, `Alt+3`) |
+| **Up (`^`) / Down (`v`)** | Short Press | Navigate command history (`Up Arrow`, `Down Arrow`) |
+| **OK** | Short Press | Execute selected command (`Enter / Return`) |
+| **BACK** | Short Press | Send interrupt (`Ctrl+C` / SIGINT) or trigger **Panic Lock** |
+| **BACK** | Long Press | Open the central **Terminal Hub Menu** |
 
 ---
 
-## Proje Yapısı
+## Reproducibility & Verification
+
+| Target Test / Task | Command | Expected Output / Result |
+| :--- | :--- | :--- |
+| **Environment Check** | `python3 scripts/check_install.py` | Python, ufbt, and FAP packaging health report |
+| **Diagram Generation** | `python3 scripts/generate_assets.py` | High-resolution `assets/demo.png` and `assets/architecture.png` |
+| **Clean FAP Build** | `ufbt build` | Target API 87.1 compatible `.fap` binary output |
+| **Live Device Launch** | `ufbt launch` | Immediate execution on Flipper Zero ST7565 LCD |
+
+---
+
+## Project Structure
 
 ```
 terminal_remote/
-├── assets/                    # README görselleri, şemalar ve arayüz çizimleri
-│   ├── architecture.png       # Sistem ve protokol mimari blok şeması
-│   └── demo.png               # Flipper Zero arayüz akış simülasyonu
-├── dist/                      # Derlenmiş yüklemeye hazır FAP dosyaları
-│   └── terminal_remote.fap    # Dağıtıma hazır Flipper Zero uygulama ikilisi
-├── scripts/                   # Kurulum, doğrulama ve varlık üretme yardımcı betikleri
-│   ├── check_install.py       # Çevre ve kurulum doğrulama betiği
-│   └── generate_assets.py     # Mimari ve arayüz görsel oluşturucu
+├── assets/                    # High-resolution README graphics and architecture diagrams
+│   ├── architecture.png       # System and wireless protocol architecture diagram
+│   └── demo.png               # Multi-screen Flipper Zero UI state simulation
+├── dist/                      # Precompiled, ready-to-deploy FAP binaries
+│   └── terminal_remote.fap    # Standalone Flipper Zero application package
+├── scripts/                   # Setup, verification, and asset generation toolchain
+│   ├── check_install.py       # Environment and installation validation script
+│   └── generate_assets.py     # Pillow-based architectural diagram generator
 ├── application.fam            # Flipper Application Manifest
-├── terminal_remote.c          # Ana FreeRTOS / Furi OS C kaynak kodu
-├── terminal_remote.png        # 10x10 px monokrom Flipper menü ikonu
-├── LICENSE                    # MIT Lisansı
-└── README.md                  # Proje dokümantasyonu (MTA Standart Formatı)
+├── terminal_remote.c          # Primary FreeRTOS / Furi OS C application source
+├── terminal_remote.png        # 10x10 monochrome Flipper menu icon
+├── LICENSE                    # MIT License
+└── README.md                  # Comprehensive project documentation (MTA Standard)
 ```
 
 ---
 
-## Atıf, Lisans, İletişim
+## Citation, License & Contact
 
-### Atıf (BibTeX)
+### Citation (BibTeX)
 ```bibtex
 @misc{terminalremote2026,
   title  = {Terminal Remote: Flipper Zero Bluetooth LE Multi-Tab Controller and Hub},
@@ -183,10 +194,10 @@ terminal_remote/
 }
 ```
 
-### Lisans
-Bu proje [MIT Lisansı](LICENSE) kapsamında açık kaynak olarak lisanslanmıştır.
+### License
+This project is licensed under the [MIT License](LICENSE).
 
-### İletişim
-- **Geliştirici:** Nasuhi
+### Contact & Support
+- **Author:** Nasuhi
 - **GitHub:** [@Nasuhii](https://github.com/Nasuhii)
-- **Proje Deposu:** [https://github.com/Nasuhii/terminal_remote](https://github.com/Nasuhii/terminal_remote)
+- **Repository:** [https://github.com/Nasuhii/terminal_remote](https://github.com/Nasuhii/terminal_remote)

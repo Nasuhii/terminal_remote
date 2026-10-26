@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Generates high-resolution diagrams for MTA Yapay Zeka Merkezi README standards:
+Generates high-resolution diagrams for MTA AI Center README standards:
 1. assets/demo.png - Side-by-side UI simulation of Flipper Zero screens
 2. assets/architecture.png - System architecture block diagram
 """
@@ -30,16 +30,16 @@ def generate_demo_image():
     draw.text((W // 2, 22), "FLIPPER ZERO — TERMINAL REMOTE PRO (UI & SCENES)", fill="#f8fafc", font=title_font, anchor="mm")
 
     screens = [
-        ("1. Eşleşme Arama", [
-            ("[ BLUETOOTH BAGLANTISI ]", True),
+        ("1. BLE Host Pairing", [
+            ("[ BLUETOOTH PAIRING ]", True),
             ("", False),
-            ("      ᛒ  BAGLANTI BEKLENIYOR", True),
-            ("         Cihaz: Flipper BT", False),
-            ("         PC/Telefondan Baglan", False),
+            ("      ᛒ  WAITING FOR HOST", True),
+            ("         Device: Flipper BT", False),
+            ("         Pair from PC / Phone", False),
             ("", False),
-            ("OK: Konsola Gec      BK: Cikis", False)
+            ("OK: To Console       BK: Exit", False)
         ]),
-        ("2. Siber Güvenlik Modu", [
+        ("2. CyberSecurity Role", [
             ("● BLE [RECON][EXPLO][REVSH] #18", True),
             ("> nmap -sC -sV 10.10.10.x [Alt+1]", False),
             ("----------------------------------", False),
@@ -48,23 +48,23 @@ def generate_demo_image():
             ("----------------------------------", False),
             ("<:Tab-  ^:Up  OK:Ret  v:Dn  >:Tab+", False)
         ]),
-        ("3. D-Pad Mouse / Sunum", [
-            ("[ D-PAD MOUSE / SUNUM ]", True),
-            ("MOD: AIR-MOUSE     ADIM: 14px", False),
+        ("3. D-Pad Mouse / Presenter", [
+            ("[ D-PAD MOUSE MODE ]", True),
+            ("MODE: AIR-MOUSE     STEP: 14px", False),
             ("          ( + ) Crosshair", True),
-            ("          [TIK!] Hazir", False),
+            ("          [CLICK!] Ready", False),
             ("----------------------------------", False),
-            ("OK: Sol Tik | OK+: Cift Tik", False),
-            ("BK: Menuye Don", False)
+            ("OK: Left Click | OK+: Double", False),
+            ("BK: Back to Menu", False)
         ]),
-        ("4. Hub Menüsü (Panic)", [
+        ("4. Terminal Hub & Panic", [
             ("[ TERMINAL HUB ]", True),
             (">_  Terminal Console", False),
-            ("(!) PANIC: Kilit (Super+L)", True),
-            ("::  Mod: Siber Guvenlik", False),
-            ("><  D-Pad Mouse / Sunum", False),
+            ("(!) PANIC: Lock (Super+L)", True),
+            ("::  Role: CyberSecurity", False),
+            ("><  D-Pad Mouse / Presenter", False),
             (">>  Quick Macros & Payloads", False),
-            ("▲▼: Gezin         OK: Sec", False)
+            ("▲▼: Navigate      OK: Select", False)
         ])
     ]
 
@@ -116,7 +116,7 @@ def generate_architecture_image():
     small_font = get_font(10, bold=False)
 
     # Title
-    draw.text((W // 2, 28), "SİSTEM VE PROTOKOL MİMARİSİ (SYSTEM ARCHITECTURE)", fill="#38bdf8", font=title_font, anchor="mm")
+    draw.text((W // 2, 28), "SYSTEM & PROTOCOL ARCHITECTURE", fill="#38bdf8", font=title_font, anchor="mm")
 
     # 1. Left Box: Flipper Zero Device
     draw.rounded_rectangle([40, 70, 360, 435], radius=12, fill="#1e293b", outline="#ff8200", width=2)
@@ -124,11 +124,11 @@ def generate_architecture_image():
     draw.line([60, 115, 340, 115], fill="#475569", width=1)
 
     flipper_blocks = [
-        ("Gelişmiş Durum Makinesi", "Connection / Controller / Mouse / Roles / Hub"),
-        ("Çalışma Rol Modları", "Pentest / AI & Veri / DevOps / Standart"),
-        ("Sıfır Sürücülü BLE HID Yığını", "Klavye Raporu + D-Pad Fare (Mouse Move/Click)"),
-        ("Acil Güvenlik Motoru (Panic)", "Tek Tıkla Ekran Kilitleme (Super+L) + RGB Flaş"),
-        ("Hızlı Makro & Payload Motoru", "ip a, git status, docker ps, nc listener fırlatıcı")
+        ("Advanced Scene FSM", "Pairing / Console / Mouse / Roles / Hub / Macros"),
+        ("Workflow Role Profiles", "Pentest / AI & Data / DevOps / Standard Dev"),
+        ("Driverless BLE HID Stack", "Standard Keyboard + D-Pad Mouse Emulation"),
+        ("Emergency Panic Engine", "One-Touch Screen Lock (Super+L) + RGB Strobe"),
+        ("Macro & Payload Injector", "One-click ip a, git status, docker ps, nc listener")
     ]
     by = 135
     for title, desc in flipper_blocks:
@@ -139,11 +139,11 @@ def generate_architecture_image():
 
     # 2. Center: Wireless Protocol (BLE 5.0)
     draw.rounded_rectangle([390, 195, 610, 310], radius=10, fill="#0f172a", outline="#38bdf8", width=2)
-    draw.text((500, 220), "KABLOSUZ İLETİŞİM", fill="#38bdf8", font=box_font_bold, anchor="mm")
+    draw.text((500, 220), "WIRELESS PROTOCOL", fill="#38bdf8", font=box_font_bold, anchor="mm")
     draw.text((500, 240), "Bluetooth 5.0 LE HID", fill="#f8fafc", font=box_font, anchor="mm")
-    draw.text((500, 260), "Standart Klavye + Fare Profili", fill="#94a3b8", font=small_font, anchor="mm")
-    draw.text((500, 280), "Doğrudan Donanım / Sıfır Ek Ajan", fill="#4ade80", font=small_font, anchor="mm")
-    draw.text((500, 296), "Ortalama Gecikme: 8.4 ms", fill="#38bdf8", font=small_font, anchor="mm")
+    draw.text((500, 260), "Standard Keyboard + Mouse Profile", fill="#94a3b8", font=small_font, anchor="mm")
+    draw.text((500, 280), "Zero Host Software Required", fill="#4ade80", font=small_font, anchor="mm")
+    draw.text((500, 296), "Avg. Latency: 8.4 ms", fill="#38bdf8", font=small_font, anchor="mm")
 
     # Connecting Arrows
     draw.line([360, 252, 390, 252], fill="#38bdf8", width=3)
@@ -151,15 +151,15 @@ def generate_architecture_image():
 
     # 3. Right Box: Host Computer
     draw.rounded_rectangle([640, 70, 960, 435], radius=12, fill="#1e293b", outline="#38bdf8", width=2)
-    draw.text((800, 95), "HEDEF BİLGİSAYAR (HOST SYSTEM)", fill="#38bdf8", font=box_font_bold, anchor="mm")
+    draw.text((800, 95), "TARGET HOST SYSTEM", fill="#38bdf8", font=box_font_bold, anchor="mm")
     draw.line([660, 115, 940, 115], fill="#475569", width=1)
 
     host_blocks = [
-        ("Yerel İşletim Sistemi Sürücüsü", "Linux / macOS / Windows / Android / iOS"),
-        ("Çekirdek Girdi Alt Sistemi", "/dev/input (evdev) Standart HID Klavye & Fare"),
-        ("Çoklu Sekme & Çalışma Alanı", "Alt+1, Alt+2, Alt+3 ile Anında Sekme Geçişi"),
-        ("Terminal Emülatörü & Kabuk", "tmux, Alacritty, GNOME Terminal, Kitty, iTerm2"),
-        ("Süreç & Oturum Kontrolü", "SIGINT (^C), EOF (^D), Ekran Kilidi, Payloadlar")
+        ("Native OS HID Stack", "Linux / macOS / Windows / Android / iOS"),
+        ("Kernel Input Subsystem", "/dev/input (evdev) Standard HID Devices"),
+        ("Multi-Tab Workspace", "Instant Tab Switching via Alt+1, Alt+2, Alt+3"),
+        ("Terminal Emulator & Shell", "tmux, Alacritty, GNOME Terminal, Kitty, iTerm2"),
+        ("Process & Session Control", "SIGINT (^C), EOF (^D), Screen Lock, Payloads")
     ]
     by = 135
     for title, desc in host_blocks:

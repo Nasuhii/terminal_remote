@@ -277,10 +277,10 @@ static const TabConfig ROLE_TABS[RoleProfileCount][NUM_TABS] = {
 };
 
 static const char* const ROLE_NAMES[RoleProfileCount] = {
-    "Standart Dev",
-    "Siber Guvenlik",
-    "Yapay Zeka & Veri",
-    "DevOps & Bulut"
+    "Standard Dev",
+    "CyberSecurity",
+    "AI & Data Science",
+    "DevOps & Cloud"
 };
 
 #define TERMINAL_TABS (ROLE_TABS[app->role_profile])
@@ -595,7 +595,7 @@ static void draw_scene_connection(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_draw_box(canvas, 0, 0, 128, 12);
     canvas_set_color(canvas, ColorWhite);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ BLUETOOTH BAGLANTISI ]");
+    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ BLUETOOTH PAIRING ]");
     canvas_set_color(canvas, ColorBlack);
 
     // Frame
@@ -610,27 +610,27 @@ static void draw_scene_connection(Canvas* canvas, TerminalRemoteApp* app) {
 
     if(app->connected) {
         canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 28, 26, "CIHAZA BAGLI");
+        canvas_draw_str(canvas, 28, 26, "HOST CONNECTED");
         canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str(canvas, 28, 37, "BLE HID Aktif (Hazir)");
-        canvas_draw_str(canvas, 28, 47, "[OK] ile Konsola Girin");
+        canvas_draw_str(canvas, 28, 37, "BLE HID Active (Ready)");
+        canvas_draw_str(canvas, 28, 47, "Press OK for Console");
     } else {
         canvas_set_font(canvas, FontPrimary);
-        canvas_draw_str(canvas, 28, 26, "BAGLANTI BEKLENIYOR");
+        canvas_draw_str(canvas, 28, 26, "WAITING FOR HOST");
         canvas_set_font(canvas, FontSecondary);
-        canvas_draw_str(canvas, 28, 37, "Cihaz: Flipper Bluetooth");
-        canvas_draw_str(canvas, 28, 47, "PC/Telefondan Baglanin");
+        canvas_draw_str(canvas, 28, 37, "Device: Flipper Bluetooth");
+        canvas_draw_str(canvas, 28, 47, "Pair from PC / Phone");
     }
 
     // Bottom Bar
     canvas_draw_line(canvas, 0, 54, 128, 54);
     canvas_set_font(canvas, FontSecondary);
     if(app->connected) {
-        canvas_draw_str(canvas, 3, 62, "OK: Konsol");
+        canvas_draw_str(canvas, 3, 62, "OK: Console");
         canvas_draw_str_aligned(canvas, 125, 62, AlignRight, AlignBottom, "BK: Menu");
     } else {
-        canvas_draw_str(canvas, 3, 62, "OK: Konsola Gec");
-        canvas_draw_str_aligned(canvas, 125, 62, AlignRight, AlignBottom, "BK: Cikis");
+        canvas_draw_str(canvas, 3, 62, "OK: Console");
+        canvas_draw_str_aligned(canvas, 125, 62, AlignRight, AlignBottom, "BK: Exit");
     }
 }
 
@@ -748,15 +748,15 @@ static void draw_scene_mouse(Canvas* canvas, TerminalRemoteApp* app) {
 
     // Status / Mode Info
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str(canvas, 6, 24, "MOD: MOUSE");
-    canvas_draw_str(canvas, 6, 34, "ADIM: 14px");
+    canvas_draw_str(canvas, 6, 24, "MODE: MOUSE");
+    canvas_draw_str(canvas, 6, 34, "STEP: 14px");
     if(app->btn_ok) {
-        canvas_draw_str(canvas, 86, 34, "[TIK!]");
+        canvas_draw_str(canvas, 86, 34, "[CLICK!]");
     }
 
     // Bottom Bar
     canvas_draw_line(canvas, 0, 54, 128, 54);
-    canvas_draw_str(canvas, 3, 62, "OK: Sol Tik | OK+: Cift");
+    canvas_draw_str(canvas, 3, 62, "OK: Left Click | OK+: Double");
     canvas_draw_str_aligned(canvas, 125, 62, AlignRight, AlignBottom, "BK: Menu");
 }
 
@@ -764,13 +764,13 @@ static void draw_scene_role_select(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_draw_box(canvas, 0, 0, 128, 12);
     canvas_set_color(canvas, ColorWhite);
     canvas_set_font(canvas, FontSecondary);
-    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ CALISMA PROFILI ]");
+    canvas_draw_str_aligned(canvas, 64, 9, AlignCenter, AlignBottom, "[ WORKFLOW PROFILE ]");
     canvas_set_color(canvas, ColorBlack);
 
     for(uint8_t i = 0; i < RoleProfileCount; ++i) {
         uint8_t y = 23 + (i * 9);
         char line[32];
-        const char* active_tag = (i == app->role_profile) ? " [AKTIF]" : "";
+        const char* active_tag = (i == app->role_profile) ? " [ACTIVE]" : "";
         snprintf(line, sizeof(line), "%d. %s%s", i + 1, ROLE_NAMES[i], active_tag);
 
         if(app->role_select_index == i) {
@@ -792,7 +792,7 @@ static void draw_scene_role_select(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_draw_str(canvas, 3, 51, preview);
 
     canvas_draw_line(canvas, 0, 55, 127, 55);
-    canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "OK: Aktif Et  |  BK: Menu");
+    canvas_draw_str_aligned(canvas, 64, 63, AlignCenter, AlignBottom, "OK: Activate  |  BK: Menu");
 }
 
 static void draw_scene_menu(Canvas* canvas, TerminalRemoteApp* app) {
@@ -806,10 +806,10 @@ static void draw_scene_menu(Canvas* canvas, TerminalRemoteApp* app) {
     snprintf(p_str, sizeof(p_str), "Preset: %s", app->presets[app->active_preset_index].name);
 
     char bt_label[32];
-    snprintf(bt_label, sizeof(bt_label), "Bluetooth: %s", app->connected ? "Bagli [OK]" : "Baglan [Bekliyor]");
+    snprintf(bt_label, sizeof(bt_label), "Bluetooth: %s", app->connected ? "Connected [OK]" : "Pairing [Wait]");
 
     char role_label[32];
-    snprintf(role_label, sizeof(role_label), "Mod: %s", ROLE_NAMES[app->role_profile]);
+    snprintf(role_label, sizeof(role_label), "Role: %s", ROLE_NAMES[app->role_profile]);
 
     typedef struct {
         const char* badge;
@@ -819,9 +819,9 @@ static void draw_scene_menu(Canvas* canvas, TerminalRemoteApp* app) {
     const MenuRow items[] = {
         {.badge = ">_",  .label = "Terminal Console"},
         {.badge = "BT",  .label = bt_label},
-        {.badge = "(!)", .label = "PANIC: Kilit (Super+L)"},
+        {.badge = "(!)", .label = "PANIC: Lock (Super+L)"},
         {.badge = "::",  .label = role_label},
-        {.badge = "><",  .label = "D-Pad Mouse / Sunum"},
+        {.badge = "><",  .label = "D-Pad Mouse / Presenter"},
         {.badge = "#P",  .label = p_str},
         {.badge = ">>",  .label = "Quick Macros & Payloads"},
         {.badge = "-o-", .label = "Settings & Remap"},
@@ -905,7 +905,7 @@ static void draw_scene_quick_macros(Canvas* canvas, TerminalRemoteApp* app) {
     canvas_set_color(canvas, ColorBlack);
 
     const char* macros[] = {
-        "1. [!] PANIC: Kilit (Super+L)",
+        "1. [!] PANIC: Lock (Super+L)",
         "2. ^C  SIGINT (Interrupt)",
         "3. ^D  EOF (Exit Session)",
         "4. ^L  Clear Screen",
@@ -1319,7 +1319,7 @@ static void handle_role_select_input(TerminalRemoteApp* app, InputEvent* event) 
     case InputKeyOk:
         app->role_profile = (RoleProfile)app->role_select_index;
         terminal_remote_save_settings(app);
-        snprintf(app->last_action, sizeof(app->last_action), "Mod: %s", ROLE_NAMES[app->role_profile]);
+        snprintf(app->last_action, sizeof(app->last_action), "Role: %s", ROLE_NAMES[app->role_profile]);
         if(app->haptics_enabled && app->notifications) {
             notification_message(app->notifications, &sequence_single_vibro);
         }
